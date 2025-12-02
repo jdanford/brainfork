@@ -1,11 +1,12 @@
-use std::{
-    env,
-    fs::File, io::BufReader,
-};
+use std::{env, fs::File, io::BufReader};
 
 use brainfork::{CompileConfig, EofBehavior, RunConfig, compile, run};
 
-fn run_file(path: &str, compile_config: CompileConfig, run_config: RunConfig) -> Result<(), String> {
+fn run_file(
+    path: &str,
+    compile_config: CompileConfig,
+    run_config: RunConfig,
+) -> Result<(), String> {
     let file = File::open(path).map_err(|e| e.to_string())?;
     let reader = BufReader::new(file);
     let code = compile(reader, compile_config)?;
@@ -13,11 +14,10 @@ fn run_file(path: &str, compile_config: CompileConfig, run_config: RunConfig) ->
 }
 
 fn main() -> Result<(), String> {
-    let compile_config = CompileConfig {
-        enable_debug: true,
-    };
+    let compile_config = CompileConfig { enable_debug: true };
 
     let run_config = RunConfig {
+        memory_size: u16::MAX,
         eof_behavior: EofBehavior::Zero,
         debug_length: 10,
     };

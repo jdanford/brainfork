@@ -2,8 +2,6 @@ use std::io::{self, Read, Write};
 
 use crate::Inst;
 
-const MEMORY_SIZE: u16 = u16::MAX;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EofBehavior {
     Zero,
@@ -15,12 +13,13 @@ pub enum EofBehavior {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RunConfig {
+    pub memory_size: u16,
     pub eof_behavior: EofBehavior,
     pub debug_length: usize,
 }
 
 pub fn run(code: &[Inst], config: RunConfig) -> Result<(), String> {
-    let mut memory = vec![0u8; MEMORY_SIZE as usize];
+    let mut memory = vec![0u8; config.memory_size as usize];
     let mut buffer = [0u8; 1];
 
     let mut ip: u16 = 0;
@@ -34,20 +33,16 @@ pub fn run(code: &[Inst], config: RunConfig) -> Result<(), String> {
 
         match inst {
             Inst::Fwd(n) => {
-                let (new_dp, _) = dp.overflowing_add(n);
-                dp = new_dp;
+                dp = dp.wrapping_add(n);
             }
             Inst::Rev(n) => {
-                let (new_dp, _) = dp.overflowing_sub(n);
-                dp = new_dp;
+                dp = dp.wrapping_sub(n);
             }
             Inst::Add(n) => {
-                let (value, _) = cell.overflowing_add(n);
-                *cell = value;
+                *cell = cell.wrapping_add(n);
             }
             Inst::Sub(n) => {
-                let (value, _) = cell.overflowing_sub(n);
-                *cell = value;
+                *cell = cell.wrapping_sub(n);
             }
             Inst::Get => match stdin.read_exact(&mut buffer) {
                 Ok(()) => *cell = buffer[0],
@@ -74,7 +69,6 @@ pub fn run(code: &[Inst], config: RunConfig) -> Result<(), String> {
                     continue;
                 }
             }
-            #[allow(clippy::cast_lossless, clippy::cast_sign_loss)]
             Inst::Dbg => {
                 let view = &memory[..config.debug_length];
                 for byte in view {
