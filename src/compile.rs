@@ -4,7 +4,12 @@ use crate::Inst;
 
 const ERROR_MAX_CODE_SIZE: &str = "Maximum code size exceeded";
 
-pub fn compile<R: BufRead>(input: R) -> Result<Vec<Inst>, String> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CompileConfig {
+    pub enable_debug: bool,
+}
+
+pub fn compile<R: BufRead>(input: R, config: CompileConfig) -> Result<Vec<Inst>, String> {
     let mut code = Vec::new();
     let mut loop_starts = Vec::new();
 
@@ -72,6 +77,9 @@ pub fn compile<R: BufRead>(input: R) -> Result<Vec<Inst>, String> {
                 } else {
                     return Err("Encountered loop end without matching loop start".to_string());
                 }
+            }
+            b'#' if config.enable_debug => {
+                code.push(Inst::Dbg);
             }
             _ => {}
         }

@@ -10,6 +10,7 @@ pub enum Inst {
     Put,
     Jz(u16),
     Jnz(u16),
+    Dbg,
 }
 
 impl Display for Inst {
@@ -23,6 +24,7 @@ impl Display for Inst {
             Inst::Put => write!(f, "put"),
             Inst::Jz(pc) => write!(f, "jz  {pc}"),
             Inst::Jnz(pc) => write!(f, "jnz {pc}"),
+            Inst::Dbg => write!(f, "dbg"),
         }
     }
 }

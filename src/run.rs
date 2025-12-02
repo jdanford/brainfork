@@ -16,6 +16,7 @@ pub enum EofBehavior {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RunConfig {
     pub eof_behavior: EofBehavior,
+    pub debug_length: usize,
 }
 
 pub fn run(code: &[Inst], config: RunConfig) -> Result<(), String> {
@@ -56,7 +57,7 @@ pub fn run(code: &[Inst], config: RunConfig) -> Result<(), String> {
                     EofBehavior::Unchanged => {}
                 },
                 Err(e) => return Err(e.to_string()),
-            }
+            },
             Inst::Put => {
                 buffer[0] = *cell;
                 stdout.write_all(&buffer).unwrap();
@@ -72,6 +73,16 @@ pub fn run(code: &[Inst], config: RunConfig) -> Result<(), String> {
                     ip = new_ip;
                     continue;
                 }
+            }
+            #[allow(clippy::cast_lossless, clippy::cast_sign_loss)]
+            Inst::Dbg => {
+                let view = &memory[..config.debug_length];
+                for byte in view {
+                    print!("{byte:02x} ");
+                }
+
+                let offset = dp as usize * 3 + 2;
+                println!("\n{:width$}", "^", width = offset);
             }
         }
 

@@ -11,6 +11,6 @@ mod compile;
 mod inst;
 mod run;
 
-pub use compile::compile;
+pub use compile::{compile, CompileConfig};
 pub use inst::Inst;
 pub use run::{run, EofBehavior, RunConfig};
