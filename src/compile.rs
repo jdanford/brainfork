@@ -1,17 +1,20 @@
 use std::io::BufRead;
 
-use crate::Inst;
+#[allow(clippy::enum_glob_use)]
+use crate::Inst::{self, *};
 
 const ERROR_MAX_CODE_SIZE: &str = "Maximum code size exceeded";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CompileConfig {
+    pub optimization: u8,
     pub enable_debug: bool,
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn compile<R: BufRead>(input: R, config: CompileConfig) -> Result<Vec<Inst>, String> {
     let mut code = Vec::new();
-    let mut loop_starts = Vec::new();
+    let mut loop_body_addrs = Vec::new();
 
     for char_result in input.bytes() {
         let char = char_result.map_err(|err| err.to_string())?;
@@ -20,74 +23,115 @@ pub fn compile<R: BufRead>(input: R, config: CompileConfig) -> Result<Vec<Inst>,
 
         match char {
             b'>' => {
-                if let Some(Inst::Fwd(n)) = last_inst
-                    && *n != u16::MAX
+                if config.optimization >= 1
+                    && let Some(Fwd(r)) = last_inst
+                    && *r != u8::MAX
                 {
-                    *n += 1;
+                    *r += 1;
                 } else {
-                    code.push(Inst::Fwd(1));
+                    code.push(Fwd(1));
                 }
             }
             b'<' => {
-                if let Some(Inst::Rev(n)) = last_inst
-                    && *n != u16::MAX
+                if config.optimization >= 1
+                    && let Some(Rev(l)) = last_inst
+                    && *l != u8::MAX
                 {
-                    *n += 1;
+                    *l += 1;
                 } else {
-                    code.push(Inst::Rev(1));
+                    code.push(Rev(1));
                 }
             }
             b'+' => {
-                if let Some(Inst::Add(n)) = last_inst
+                if config.optimization >= 1
+                    && let Some(Add(n)) = last_inst
                     && *n != u8::MAX
                 {
                     *n += 1;
                 } else {
-                    code.push(Inst::Add(1));
+                    code.push(Add(1));
                 }
             }
             b'-' => {
-                if let Some(Inst::Sub(n)) = last_inst
+                if config.optimization >= 1
+                    && let Some(Sub(n)) = last_inst
                     && *n != u8::MAX
                 {
                     *n += 1;
                 } else {
-                    code.push(Inst::Sub(1));
+                    code.push(Sub(1));
                 }
             }
-            b',' => code.push(Inst::Get),
-            b'.' => code.push(Inst::Put),
+            b',' => code.push(Get),
+            b'.' => code.push(Put),
             b'[' => {
-                let loop_start = pc.checked_add(1).ok_or(ERROR_MAX_CODE_SIZE)?;
-                loop_starts.push(loop_start);
-                code.push(Inst::Jz(0));
+                let loop_body_addr = pc.checked_add(1).ok_or(ERROR_MAX_CODE_SIZE)?;
+                loop_body_addrs.push(loop_body_addr);
+                code.push(Jz(0));
             }
             b']' => {
-                if let Some(loop_start) = loop_starts.pop() {
-                    let loop_end = pc.checked_add(1).ok_or(ERROR_MAX_CODE_SIZE)?;
-                    let loop_start_pc = loop_start - 1;
-                    let loop_start_inst = code.get_mut(loop_start_pc as usize);
-                    if let Some(Inst::Jz(addr)) = loop_start_inst {
-                        *addr = loop_end;
+                if let Some(loop_body_addr) = loop_body_addrs.pop() {
+                    let loop_after_addr = pc.checked_add(1).ok_or(ERROR_MAX_CODE_SIZE)?;
+                    let loop_start_addr = loop_body_addr - 1;
+                    let loop_start_inst = code.get_mut(loop_start_addr as usize);
+                    if let Some(Jz(addr)) = loop_start_inst {
+                        *addr = loop_after_addr;
                     } else {
-                        unreachable!("Expected `jz`, got {loop_start_inst:?}");
+                        panic!("Expected `jz <n>`, got {loop_start_inst:?}");
                     }
 
-                    code.push(Inst::Jnz(loop_start));
+                    let loop_body = &code[(loop_body_addr as usize)..];
+                    if config.optimization >= 2
+                        && let Some(new_code) = optimize_loop(loop_body)
+                    {
+                        code.truncate(loop_start_addr as usize);
+                        code.extend(new_code.into_iter());
+                    } else {
+                        code.push(Jnz(loop_body_addr));
+                    }
                 } else {
                     return Err("Encountered loop end without matching loop start".to_string());
                 }
             }
             b'#' if config.enable_debug => {
-                code.push(Inst::Dbg);
+                code.push(Dbg);
             }
             _ => {}
         }
     }
 
-    if !loop_starts.is_empty() {
+    if !loop_body_addrs.is_empty() {
         return Err("Encountered loop start without matching loop end".to_string());
     }
 
     Ok(code)
+}
+
+fn optimize_loop(code: &[Inst]) -> Option<Vec<Inst>> {
+    match *code {
+        // []
+        [] => Some(vec![]),
+
+        // [-] | [+]
+        [Sub(_) | Add(_)] => Some(vec![(Clr)]),
+
+        // [>]
+        [Fwd(r)] => Some(vec![(Fzr(r))]),
+
+        // [<]
+        [Rev(l)] => Some(vec![(Fzl(l))]),
+
+        // [->+<] | [>+<-]
+        [Sub(1), Fwd(r), Add(n), Rev(l)] | [Fwd(r), Add(n), Rev(l), Sub(1)] if l == r => {
+            Some(vec![(Mvr(r, n))])
+        }
+
+        // [-<+>] | [<+>-]
+        [Sub(1), Rev(l), Add(n), Fwd(r)] | [Rev(l), Add(n), Fwd(r), Sub(1)] if l == r => {
+            Some(vec![(Mvl(l, n))])
+        }
+
+        // _
+        _ => None,
+    }
 }

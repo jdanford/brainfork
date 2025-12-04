@@ -11,6 +11,6 @@ mod compile;
 mod inst;
 mod run;
 
-pub use compile::{compile, CompileConfig};
-pub use inst::Inst;
-pub use run::{run, EofBehavior, RunConfig};
+pub use compile::{CompileConfig, compile};
+pub use inst::{Inst, dump_asm, dump_ebf};
+pub use run::{EofBehavior, RunConfig, run};
