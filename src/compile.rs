@@ -2,8 +2,7 @@ use std::io::BufRead;
 
 #[allow(clippy::enum_glob_use)]
 use crate::Inst::{self, *};
-
-const ERROR_MAX_CODE_SIZE: &str = "Maximum code size exceeded";
+use crate::{Error, error::Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CompileConfig {
@@ -12,13 +11,13 @@ pub struct CompileConfig {
 }
 
 #[allow(clippy::too_many_lines)]
-pub fn compile<R: BufRead>(input: R, config: CompileConfig) -> Result<Vec<Inst>, String> {
+pub fn compile<R: BufRead>(input: R, config: CompileConfig) -> Result<Vec<Inst>> {
     let mut code = Vec::new();
     let mut loop_body_addrs = Vec::new();
 
     for char_result in input.bytes() {
-        let char = char_result.map_err(|err| err.to_string())?;
-        let pc = u16::try_from(code.len()).map_err(|_| ERROR_MAX_CODE_SIZE)?;
+        let char = char_result?;
+        let pc = u16::try_from(code.len()).map_err(|_| Error::MaxCodeSizeExceeded)?;
         let last_inst = code.last_mut();
 
         match char {
@@ -65,13 +64,13 @@ pub fn compile<R: BufRead>(input: R, config: CompileConfig) -> Result<Vec<Inst>,
             b',' => code.push(Get),
             b'.' => code.push(Put),
             b'[' => {
-                let loop_body_addr = pc.checked_add(1).ok_or(ERROR_MAX_CODE_SIZE)?;
+                let loop_body_addr = pc.checked_add(1).ok_or(Error::MaxCodeSizeExceeded)?;
                 loop_body_addrs.push(loop_body_addr);
                 code.push(Jz(0));
             }
             b']' => {
                 if let Some(loop_body_addr) = loop_body_addrs.pop() {
-                    let loop_after_addr = pc.checked_add(1).ok_or(ERROR_MAX_CODE_SIZE)?;
+                    let loop_after_addr = pc.checked_add(1).ok_or(Error::MaxCodeSizeExceeded)?;
                     let loop_start_addr = loop_body_addr - 1;
                     let loop_start_inst = code.get_mut(loop_start_addr as usize);
                     if let Some(Jz(addr)) = loop_start_inst {
@@ -90,7 +89,7 @@ pub fn compile<R: BufRead>(input: R, config: CompileConfig) -> Result<Vec<Inst>,
                         code.push(Jnz(loop_body_addr));
                     }
                 } else {
-                    return Err("Encountered loop end without matching loop start".to_string());
+                    return Err(Error::UnmatchedLoopEnd);
                 }
             }
             b'#' if config.enable_debug => {
@@ -101,7 +100,7 @@ pub fn compile<R: BufRead>(input: R, config: CompileConfig) -> Result<Vec<Inst>,
     }
 
     if !loop_body_addrs.is_empty() {
-        return Err("Encountered loop start without matching loop end".to_string());
+        return Err(Error::UnmatchedLoopStart);
     }
 
     Ok(code)

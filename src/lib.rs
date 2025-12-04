@@ -8,9 +8,11 @@
 )]
 
 mod compile;
+mod error;
 mod inst;
 mod run;
 
 pub use compile::{CompileConfig, compile};
+pub use error::{Error, Result, handle_error};
 pub use inst::{Inst, dump_asm, dump_ebf};
 pub use run::{EofBehavior, RunConfig, run};

@@ -1,20 +1,17 @@
-use std::{env, fs::File, io::BufReader, path::Path};
+use std::{env, fs::File, io::BufReader, path::Path, process::ExitCode};
 
-use brainfork::{CompileConfig, EofBehavior, RunConfig, compile, run};
+use anyhow::anyhow;
+use brainfork::{CompileConfig, EofBehavior, Result, RunConfig, compile, handle_error, run};
 
-fn run_file(
-    path: &Path,
-    compile_config: CompileConfig,
-    run_config: RunConfig,
-) -> Result<(), String> {
-    let file = File::open(path).map_err(|err| err.to_string())?;
+fn run_file(path: &Path, compile_config: CompileConfig, run_config: RunConfig) -> Result<()> {
+    let file = File::open(path)?;
     let reader = BufReader::new(file);
     let code = compile(reader, compile_config)?;
     run(&code, run_config)?;
     Ok(())
 }
 
-fn main() -> Result<(), String> {
+fn main() -> ExitCode {
     let compile_config = CompileConfig {
         optimization: 2,
         enable_debug: true,
@@ -27,8 +24,10 @@ fn main() -> Result<(), String> {
     };
 
     let args = env::args().skip(1).collect::<Vec<_>>();
-    match args[..] {
-        [ref path_str] => run_file(Path::new(path_str), compile_config, run_config),
-        _ => Err(format!("Expected 1 arg, got {}", args.len())),
-    }
+    let result = match &args[..] {
+        [path_str] => run_file(Path::new(path_str), compile_config, run_config),
+        _ => Err(anyhow!("expected 1 arg, got {}", args.len()).into()),
+    };
+
+    handle_error(result)
 }

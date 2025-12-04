@@ -1,6 +1,6 @@
 use std::io::{self, Read, Write};
 
-use crate::Inst;
+use crate::{Inst, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EofBehavior {
@@ -18,7 +18,7 @@ pub struct RunConfig {
     pub debug_length: usize,
 }
 
-pub fn run(code: &[Inst], config: RunConfig) -> Result<(), String> {
+pub fn run(code: &[Inst], config: RunConfig) -> Result<()> {
     let mut memory = vec![0u8; config.memory_size as usize];
     let mut buffer = [0u8; 1];
 
@@ -74,13 +74,14 @@ pub fn run(code: &[Inst], config: RunConfig) -> Result<(), String> {
                 let cell = memory.get_mut(dp as usize).unwrap();
                 match stdin.read_exact(&mut buffer) {
                     Ok(()) => *cell = buffer[0],
-                    Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => match config.eof_behavior
-                    {
-                        EofBehavior::Zero => *cell = 0,
-                        EofBehavior::Neg1 => *cell = u8::MAX,
-                        EofBehavior::Unchanged => {}
-                    },
-                    Err(e) => return Err(e.to_string()),
+                    Err(err) if err.kind() == io::ErrorKind::UnexpectedEof => {
+                        match config.eof_behavior {
+                            EofBehavior::Zero => *cell = 0,
+                            EofBehavior::Neg1 => *cell = u8::MAX,
+                            EofBehavior::Unchanged => {}
+                        }
+                    }
+                    Err(err) => return Err(err.into()),
                 }
             }
             Inst::Put => {
