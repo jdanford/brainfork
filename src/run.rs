@@ -13,13 +13,13 @@ pub enum EofBehavior {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RunConfig {
-    pub memory_size: u16,
     pub eof_behavior: EofBehavior,
+    pub memory_size: usize,
     pub debug_length: usize,
 }
 
 pub fn run(code: &[Inst], config: RunConfig) -> Result<()> {
-    let mut memory = vec![0u8; config.memory_size as usize];
+    let mut memory = vec![0u8; config.memory_size];
     let mut buffer = [0u8; 1];
 
     let mut ip: u16 = 0;

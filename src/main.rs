@@ -18,8 +18,8 @@ fn main() -> ExitCode {
     };
 
     let run_config = RunConfig {
-        memory_size: u16::MAX,
         eof_behavior: EofBehavior::Zero,
+        memory_size: 1 << 16,
         debug_length: 10,
     };
 
