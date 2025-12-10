@@ -108,7 +108,8 @@ pub fn dump_ebf<W: Write>(code: &[Inst], writer: &mut W) -> Result<(), io::Error
                     line += 1;
                 }
 
-                let indent_or_space = if col == 0 { depth * 2 } else { 1 };
+                let indent = depth * 2;
+                let indent_or_space = if col == 0 { indent } else { 1 };
                 write!(writer, "{:width$}", "", width = indent_or_space)?;
                 inst.fmt_ebf(writer)?;
 

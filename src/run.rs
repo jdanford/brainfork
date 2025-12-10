@@ -5,9 +5,7 @@ use crate::{Inst, Result};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EofBehavior {
     Zero,
-    #[allow(dead_code)]
     Neg1,
-    #[allow(dead_code)]
     Unchanged,
 }
 

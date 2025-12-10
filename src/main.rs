@@ -18,7 +18,7 @@ fn main() -> ExitCode {
     };
 
     let run_config = RunConfig {
-        eof_behavior: EofBehavior::Zero,
+        eof_behavior: EofBehavior::Unchanged,
         memory_size: 1 << 16,
         debug_length: 10,
     };
