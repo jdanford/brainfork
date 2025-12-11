@@ -11,7 +11,7 @@ pub struct CompileConfig {
 }
 
 #[allow(clippy::too_many_lines)]
-pub fn compile<R: BufRead>(input: R, config: CompileConfig) -> Result<Vec<Inst>> {
+pub fn compile<R: BufRead>(input: R, config: &CompileConfig) -> Result<Vec<Inst>> {
     let mut code = Vec::new();
     let mut loop_body_addrs = Vec::new();
 

@@ -1,4 +1,7 @@
-use std::io::{self, Read, Write};
+use std::{
+    fmt::Debug,
+    io::{self, Read, Write},
+};
 
 use crate::{Inst, Result};
 
@@ -9,24 +12,22 @@ pub enum EofBehavior {
     Unchanged,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RunConfig {
+pub struct RunConfig<I: Read, O: Write> {
+    pub stdin: I,
+    pub stdout: O,
     pub eof_behavior: EofBehavior,
     pub memory_size: usize,
     pub debug_length: usize,
 }
 
-pub fn run(code: &[Inst], config: RunConfig) -> Result<()> {
-    let mut memory = vec![0u8; config.memory_size];
-    let mut buffer = [0u8; 1];
+pub fn run<I: Read, O: Write>(code: &[Inst], config: &mut RunConfig<I, O>) -> Result<()> {
+    let mut mem = vec![0u8; config.memory_size];
+    let mut io_buf = [0u8; 1];
 
-    let mut ip: u16 = 0;
+    let mut pc: u16 = 0;
     let mut dp: u16 = 0;
 
-    let mut stdin = io::stdin();
-    let mut stdout = io::stdout();
-
-    while let Some(&inst) = code.get(ip as usize) {
+    while let Some(&inst) = code.get(pc as usize) {
         match inst {
             Inst::Fwd(n) => {
                 dp = dp.wrapping_add(u16::from(n));
@@ -35,47 +36,49 @@ pub fn run(code: &[Inst], config: RunConfig) -> Result<()> {
                 dp = dp.wrapping_sub(u16::from(n));
             }
             Inst::Add(n) => {
-                let cell = memory.get_mut(dp as usize).unwrap();
-                *cell = cell.wrapping_add(n);
+                let dest = dp as usize;
+                mem[dest] = mem[dest].wrapping_add(n);
             }
             Inst::Sub(n) => {
-                let cell = memory.get_mut(dp as usize).unwrap();
-                *cell = cell.wrapping_sub(n);
+                let dest = dp as usize;
+                mem[dest] = mem[dest].wrapping_sub(n);
             }
             Inst::Clr => {
-                let cell = memory.get_mut(dp as usize).unwrap();
-                *cell = 0;
+                let dest = dp as usize;
+                mem[dest] = 0;
             }
             Inst::Mvr(r, n) => {
-                let i = dp as usize;
-                let j = (dp + u16::from(r)) as usize;
-                memory[j] = memory[j].wrapping_add(memory[i].wrapping_mul(n));
-                memory[i] = 0;
+                let src = dp as usize;
+                let dest = (dp + u16::from(r)) as usize;
+                let value = mem[src].wrapping_mul(n);
+                mem[dest] = mem[dest].wrapping_add(value);
+                mem[src] = 0;
             }
             Inst::Mvl(l, n) => {
-                let i = dp as usize;
-                let j = (dp - u16::from(l)) as usize;
-                memory[j] = memory[j].wrapping_add(memory[i].wrapping_mul(n));
-                memory[i] = 0;
+                let src = dp as usize;
+                let dest = (dp - u16::from(l)) as usize;
+                let value = mem[src].wrapping_mul(n);
+                mem[dest] = mem[dest].wrapping_add(value);
+                mem[src] = 0;
             }
             Inst::Fzr(n) => {
-                while memory[dp as usize] != 0 {
+                while mem[dp as usize] != 0 {
                     dp += u16::from(n);
                 }
             }
             Inst::Fzl(n) => {
-                while memory[dp as usize] != 0 {
+                while mem[dp as usize] != 0 {
                     dp -= u16::from(n);
                 }
             }
             Inst::Get => {
-                let cell = memory.get_mut(dp as usize).unwrap();
-                match stdin.read_exact(&mut buffer) {
-                    Ok(()) => *cell = buffer[0],
+                let dest = dp as usize;
+                match config.stdin.read_exact(&mut io_buf) {
+                    Ok(()) => mem[dest] = io_buf[0],
                     Err(err) if err.kind() == io::ErrorKind::UnexpectedEof => {
                         match config.eof_behavior {
-                            EofBehavior::Zero => *cell = 0,
-                            EofBehavior::Neg1 => *cell = u8::MAX,
+                            EofBehavior::Zero => mem[dest] = 0,
+                            EofBehavior::Neg1 => mem[dest] = u8::MAX,
                             EofBehavior::Unchanged => {}
                         }
                     }
@@ -83,26 +86,26 @@ pub fn run(code: &[Inst], config: RunConfig) -> Result<()> {
                 }
             }
             Inst::Put => {
-                let cell = memory.get_mut(dp as usize).unwrap();
-                buffer[0] = *cell;
-                stdout.write_all(&buffer).unwrap();
+                let dest = dp as usize;
+                io_buf[0] = mem[dest];
+                config.stdout.write_all(&io_buf).unwrap();
             }
-            Inst::Jz(new_ip) => {
-                let cell = memory.get_mut(dp as usize).unwrap();
-                if *cell == 0 {
-                    ip = new_ip;
+            Inst::Jz(new_pc) => {
+                let dest = dp as usize;
+                if mem[dest] == 0 {
+                    pc = new_pc;
                     continue;
                 }
             }
-            Inst::Jnz(new_ip) => {
-                let cell = memory.get_mut(dp as usize).unwrap();
-                if *cell != 0 {
-                    ip = new_ip;
+            Inst::Jnz(new_pc) => {
+                let dest = dp as usize;
+                if mem[dest] != 0 {
+                    pc = new_pc;
                     continue;
                 }
             }
             Inst::Dbg => {
-                let view = &memory[..config.debug_length];
+                let view = &mem[..config.debug_length];
                 for (i, byte) in view.iter().enumerate() {
                     if i > 0 {
                         print!(" ");
@@ -117,7 +120,7 @@ pub fn run(code: &[Inst], config: RunConfig) -> Result<()> {
             Inst::Nop => {}
         }
 
-        ip += 1;
+        pc += 1;
     }
 
     Ok(())
