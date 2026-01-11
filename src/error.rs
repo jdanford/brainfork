@@ -17,18 +17,6 @@ pub enum Error {
 
     #[error(transparent)]
     Io(#[from] io::Error),
-
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
-}
-
-impl Error {
-    pub fn other<E>(error: E) -> Self
-    where
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        Error::Other(error.into())
-    }
 }
 
 pub fn handle_error<T>(result: Result<T>) -> ExitCode {
