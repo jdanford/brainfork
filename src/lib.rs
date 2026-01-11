@@ -6,6 +6,7 @@
     clippy::similar_names
 )]
 
+pub mod cli;
 mod compile;
 mod error;
 mod inst;
