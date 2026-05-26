@@ -1,3 +1,3 @@
 # brainfork
 
-Optimizing interpreter for Brainfuck
+Optimizing bytecode VM for Brainfuck

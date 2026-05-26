@@ -2,7 +2,6 @@
 #![allow(
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
-    clippy::new_without_default,
     clippy::similar_names
 )]
 

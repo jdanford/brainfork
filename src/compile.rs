@@ -10,7 +10,6 @@ pub struct CompileConfig {
     pub enable_debug: bool,
 }
 
-#[allow(clippy::too_many_lines)]
 pub fn compile<R: BufRead>(input: R, config: &CompileConfig) -> Result<Vec<Inst>> {
     let mut code = Vec::new();
     let mut loop_body_addrs = Vec::new();
@@ -84,7 +83,7 @@ pub fn compile<R: BufRead>(input: R, config: &CompileConfig) -> Result<Vec<Inst>
                         && let Some(new_code) = optimize_loop(loop_body)
                     {
                         code.truncate(loop_start_addr as usize);
-                        code.extend(new_code.into_iter());
+                        code.extend(new_code);
                     } else {
                         code.push(Jnz(loop_body_addr));
                     }
