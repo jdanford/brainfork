@@ -5,6 +5,8 @@ use std::{
 
 use crate::{Inst, Result};
 
+const MEMORY_SIZE: usize = 1 << u16::BITS;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EofBehavior {
     Zero,
@@ -16,12 +18,11 @@ pub struct RunConfig<I: Read, O: Write> {
     pub stdin: I,
     pub stdout: O,
     pub eof_behavior: EofBehavior,
-    pub memory_size: usize,
     pub debug_length: usize,
 }
 
 pub fn run<I: Read, O: Write>(code: &[Inst], config: &mut RunConfig<I, O>) -> Result<()> {
-    let mut mem = vec![0u8; config.memory_size];
+    let mut mem = vec![0u8; MEMORY_SIZE];
     let mut io_buf = [0u8; 1];
 
     let mut pc: u16 = 0;
@@ -49,26 +50,26 @@ pub fn run<I: Read, O: Write>(code: &[Inst], config: &mut RunConfig<I, O>) -> Re
             }
             Inst::Mvr(r, n) => {
                 let src = dp as usize;
-                let dest = (dp + u16::from(r)) as usize;
+                let dest = (dp.wrapping_add(u16::from(r))) as usize;
                 let value = mem[src].wrapping_mul(n);
                 mem[dest] = mem[dest].wrapping_add(value);
                 mem[src] = 0;
             }
             Inst::Mvl(l, n) => {
                 let src = dp as usize;
-                let dest = (dp - u16::from(l)) as usize;
+                let dest = (dp.wrapping_sub(u16::from(l))) as usize;
                 let value = mem[src].wrapping_mul(n);
                 mem[dest] = mem[dest].wrapping_add(value);
                 mem[src] = 0;
             }
             Inst::Fzr(n) => {
                 while mem[dp as usize] != 0 {
-                    dp += u16::from(n);
+                    dp = dp.wrapping_add(u16::from(n));
                 }
             }
             Inst::Fzl(n) => {
                 while mem[dp as usize] != 0 {
-                    dp -= u16::from(n);
+                    dp = dp.wrapping_sub(u16::from(n));
                 }
             }
             Inst::Get => {

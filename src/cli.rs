@@ -33,7 +33,6 @@ pub fn main() -> Result<()> {
         stdin: io::stdin(),
         stdout: io::stdout(),
         eof_behavior: EofBehavior::Unchanged,
-        memory_size: 1 << 16,
         debug_length: 10,
     };
 
