@@ -1,6 +1,7 @@
 use std::{
-    fmt::Debug,
+    fmt::{self, Debug, Display},
     io::{self, Read, Write},
+    str::FromStr,
 };
 
 use crate::{Inst, Result};
@@ -12,6 +13,29 @@ pub enum EofBehavior {
     Zero,
     Neg1,
     Unchanged,
+}
+
+impl Display for EofBehavior {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EofBehavior::Zero => write!(f, "zero"),
+            EofBehavior::Neg1 => write!(f, "neg1"),
+            EofBehavior::Unchanged => write!(f, "unchanged"),
+        }
+    }
+}
+
+impl FromStr for EofBehavior {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "zero" => Ok(EofBehavior::Zero),
+            "neg1" => Ok(EofBehavior::Neg1),
+            "unchanged" => Ok(EofBehavior::Unchanged),
+            _ => Err("invalid value".to_owned()),
+        }
+    }
 }
 
 pub struct RunConfig<I: Read, O: Write> {

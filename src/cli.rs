@@ -17,22 +17,28 @@ use crate::{CompileConfig, EofBehavior, RunConfig, compile, error::Result, run};
 pub struct Args {
     path: PathBuf,
 
-    #[arg(short = 'O', value_parser = value_parser!(u8).range(0..=2), default_value_t = 2)]
-    optimization: u8,
+    #[arg(short = 'O', long, value_parser = value_parser!(u8).range(0..=2), default_value_t = 2)]
+    opt: u8,
+
+    #[arg(short = 'd', long)]
+    debug: bool,
+
+    #[arg(short = 'e', long, default_value_t = EofBehavior::Unchanged)]
+    eof: EofBehavior,
 }
 
 pub fn main() -> Result<()> {
     let args = Args::parse();
 
     let compile_config = CompileConfig {
-        optimization: args.optimization,
-        enable_debug: true,
+        optimization: args.opt,
+        enable_debug: args.debug,
     };
 
     let mut run_config = RunConfig {
         stdin: io::stdin(),
         stdout: io::stdout(),
-        eof_behavior: EofBehavior::Unchanged,
+        eof_behavior: args.eof,
         debug_length: 10,
     };
 
