@@ -107,11 +107,8 @@ pub fn compile<R: BufRead>(input: R, config: &CompileConfig) -> Result<Vec<Inst>
 
 fn optimize_loop(code: &[Inst]) -> Option<Vec<Inst>> {
     match *code {
-        // []
-        [] => Some(vec![]),
-
-        // [-] | [+]
-        [Sub(_) | Add(_)] => Some(vec![(Clr)]),
+        // [+] | [-]
+        [Add(n) | Sub(n)] if !n.is_multiple_of(2) => Some(vec![(Clr)]),
 
         // [>]
         [Fwd(r)] => Some(vec![(Fzr(r))]),
@@ -119,13 +116,13 @@ fn optimize_loop(code: &[Inst]) -> Option<Vec<Inst>> {
         // [<]
         [Rev(l)] => Some(vec![(Fzl(l))]),
 
-        // [->+<] | [>+<-]
-        [Sub(1), Fwd(r), Add(n), Rev(l)] | [Fwd(r), Add(n), Rev(l), Sub(1)] if l == r => {
+        // [>+<-] | [->+<]
+        [Fwd(r), Add(n), Rev(l), Sub(1)] | [Sub(1), Fwd(r), Add(n), Rev(l)] if l == r => {
             Some(vec![(Mvr(r, n))])
         }
 
-        // [-<+>] | [<+>-]
-        [Sub(1), Rev(l), Add(n), Fwd(r)] | [Rev(l), Add(n), Fwd(r), Sub(1)] if l == r => {
+        // [<+>-] | [-<+>]
+        [Rev(l), Add(n), Fwd(r), Sub(1)] | [Sub(1), Rev(l), Add(n), Fwd(r)] if l == r => {
             Some(vec![(Mvl(l, n))])
         }
 
