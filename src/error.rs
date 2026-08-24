@@ -21,7 +21,7 @@ pub enum Error {
 
 pub fn handle_error<T>(result: Result<T>) -> ExitCode {
     if let Err(err) = result {
-        println!("{err}");
+        eprintln!("{err}");
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS

@@ -21,6 +21,7 @@ pub struct RunConfig<I: Read, O: Write> {
     pub debug_length: usize,
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn run<I: Read, O: Write>(code: &[Inst], config: &mut RunConfig<I, O>) -> Result<()> {
     let mut mem = vec![0u8; MEMORY_SIZE];
     let mut io_buf = [0u8; 1];
@@ -89,7 +90,7 @@ pub fn run<I: Read, O: Write>(code: &[Inst], config: &mut RunConfig<I, O>) -> Re
             Inst::Put => {
                 let dest = dp as usize;
                 io_buf[0] = mem[dest];
-                config.stdout.write_all(&io_buf).unwrap();
+                config.stdout.write_all(&io_buf)?;
             }
             Inst::Jz(new_pc) => {
                 let dest = dp as usize;
@@ -108,15 +109,21 @@ pub fn run<I: Read, O: Write>(code: &[Inst], config: &mut RunConfig<I, O>) -> Re
             Inst::Dbg => {
                 let view = &mem[..config.debug_length];
                 for (i, byte) in view.iter().enumerate() {
-                    if i > 0 {
-                        print!(" ");
+                    if i == 0 {
+                        writeln!(config.stdout,)?;
+                    } else {
+                        write!(config.stdout, " ")?;
                     }
 
-                    print!("{byte:02x}");
+                    write!(config.stdout, "{byte:02x}")?;
                 }
 
-                let offset = dp as usize * 3 + 2;
-                println!("\n{:width$}", "^", width = offset);
+                if (dp as usize) < config.debug_length {
+                    let offset = dp as usize * 3 + 1;
+                    writeln!(config.stdout, "\n{:>width$}", "^", width = offset)?;
+                } else {
+                    writeln!(config.stdout)?;
+                }
             }
             Inst::Nop => {}
         }
