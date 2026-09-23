@@ -84,8 +84,11 @@ pub fn dump_ebf<W: Write>(code: &[Inst], writer: &mut W) -> Result<(), io::Error
             Inst::Jz(_) => {
                 col = 0;
 
-                let indent = depth * 2;
-                write!(writer, "\n{:width$}", "", width = indent)?;
+                if line > 0 {
+                    let indent = depth * 2;
+                    write!(writer, "\n{:width$}", "", width = indent)?;
+                }
+
                 write!(writer, "[")?;
 
                 depth += 1;
