@@ -6,7 +6,9 @@ use std::{
 
 use clap::{Parser, value_parser};
 
-use crate::{CompileConfig, EofBehavior, RunConfig, compile, error::Result, run};
+use crate::{
+    CompileConfig, EofBehavior, RunConfig, compile, dump_asm, dump_ebf, error::Result, run,
+};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -25,6 +27,12 @@ pub struct Args {
 
     #[arg(short = 'e', long, default_value_t = EofBehavior::Unchanged)]
     eof: EofBehavior,
+
+    #[arg(long)]
+    emit_asm: bool,
+
+    #[arg(long)]
+    emit_ebf: bool,
 }
 
 pub fn main() -> Result<()> {
@@ -45,6 +53,13 @@ pub fn main() -> Result<()> {
     let file = File::open(args.path)?;
     let reader = BufReader::new(file);
     let code = compile(reader, &compile_config)?;
-    run(&code, &mut run_config)?;
+
+    if args.emit_asm {
+        dump_asm(&code, &mut run_config.stdout)?;
+    } else if args.emit_ebf {
+        dump_ebf(&code, &mut run_config.stdout)?;
+    } else {
+        run(&code, &mut run_config)?;
+    }
     Ok(())
 }

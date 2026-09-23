@@ -32,8 +32,8 @@ impl Inst {
             Inst::Clr => write!(f, "[-]"),
             Inst::Mvr(r, n) => write!(f, "+>{r}x{n}"),
             Inst::Mvl(l, n) => write!(f, "<+{l}x{n}"),
-            Inst::Fzr(n) => write!(f, "[>]{n}"),
-            Inst::Fzl(n) => write!(f, "[<]{n}"),
+            Inst::Fzr(n) => write!(f, "[>{n}]"),
+            Inst::Fzl(n) => write!(f, "[<{n}]"),
             Inst::Get => write!(f, ","),
             Inst::Put => write!(f, "."),
             Inst::Jz(_) => write!(f, "["),
@@ -66,7 +66,6 @@ impl Display for Inst {
     }
 }
 
-#[allow(dead_code)]
 pub fn dump_asm<W: Write>(code: &[Inst], writer: &mut W) -> Result<(), io::Error> {
     for (pc, inst) in code.iter().enumerate() {
         writeln!(writer, "{pc:>5}: {inst}")?;
@@ -75,7 +74,6 @@ pub fn dump_asm<W: Write>(code: &[Inst], writer: &mut W) -> Result<(), io::Error
     Ok(())
 }
 
-#[allow(dead_code)]
 pub fn dump_ebf<W: Write>(code: &[Inst], writer: &mut W) -> Result<(), io::Error> {
     let mut depth = 0;
     let mut line = 0;
